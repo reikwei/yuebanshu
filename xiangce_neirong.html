@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自然风光 - 集美相册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#3b82f6',
+                        accent: '#60a5fa',
+                        neutral: '#f3f4f6',
+                        dark: '#1e3a8a',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'scale': 'scale 0.3s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        scale: {
+                            '0%': { transform: 'scale(0.95)' },
+                            '100%': { transform: 'scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .album-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+            .photo-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .backdrop-blur {
+                backdrop-filter: blur(8px);
+            }
+            .photo-indicator {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                transition: all 0.3s ease;
+            }
+            .photo-indicator.active {
+                width: 12px;
+                height: 12px;
+            }
+            .modal-photo-container {
+                max-height: calc(100vh - 8rem);
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur shadow-sm transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <a href="xiangce_index.html" class="flex items-center">
+                    <i class="fa-brands fa-qq text-primary text-2xl"></i>
+                    <h1 class="text-xl font-bold text-primary">集美相册</h1>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- 相册简介 -->
+        <div class="mb-8 animate-slide-up" style="animation-delay: 0.1s">
+            <p class="text-gray-600 mb-6">这里都是大奶子的妹妹</p>
+            
+            <!-- 相册图片列表 -->
+            <div id="photoGrid" class="photo-grid">
+                <!-- 动态加载照片 -->
+            </div>
+            
+            <!-- 加载更多指示器 -->
+            <div id="loadingIndicator" class="flex justify-center my-8 hidden">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-brands fa-qq text-primary text-xl"></i>
+                        <span class="font-bold text-gray-800">集美相册</span>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-1">珍藏每一个美好瞬间</p>
+                </div>
+                <div class="text-center md:text-right">
+                    <p class="text-gray-500 text-sm">© 2025 集美相册. 保留所有权利.</p>
+                    <p class="text-gray-500 text-xs mt-1">制作相册TG <a href=#>@baidumiss</a></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 照片查看器模态框 -->
+    <div id="photoViewerModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <div class="relative w-full max-w-6xl">
+            <button id="closePhotoViewerBtn" class="absolute top-4 right-4 text-white/80 hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-times text-2xl"></i>
+            </button>
+            <div class="flex items-center justify-between absolute top-1/2 -translate-y-1/2 w-full px-4">
+                <button id="prevPhotoBtn" class="text-white/80 hover:text-white transition-colors">
+                    <i class="fa-solid fa-angle-left text-3xl"></i>
+                </button>
+                <button id="nextPhotoBtn" class="text-white/80 hover:text-white transition-colors">
+                    <i class="fa-solid fa-angle-right text-3xl"></i>
+                </button>
+            </div>
+            <div class="bg-black rounded-lg overflow-hidden">
+                <div class="modal-photo-container flex items-center justify-center">
+                    <img id="currentPhoto" src="" alt="大图预览" class="max-h-full max-w-full object-contain">
+                </div>
+                <!-- 照片指示器移至图片下方居中位置 -->
+                <div id="modalIndicators" class="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+                    <!-- 动态生成指示器 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟照片数据 - 前8张包含3张长图
+        const photos = [
+            { id: 1, seed: "photo1", aspectRatio: "3/4" },
+            { id: 2, seed: "photo2", aspectRatio: "16/9" },
+            { id: 3, seed: "photo3", aspectRatio: "3/4" },
+            { id: 4, seed: "photo4", aspectRatio: "16/9" },
+            { id: 5, seed: "photo5", aspectRatio: "3/4" },
+            { id: 6, seed: "photo6", aspectRatio: "16/9" },
+            { id: 7, seed: "photo7", aspectRatio: "16/9" },
+            { id: 8, seed: "photo8", aspectRatio: "16/9" },
+            { id: 9, seed: "photo9", aspectRatio: "16/9" },
+            { id: 10, seed: "photo10", aspectRatio: "16/9" },
+            { id: 11, seed: "photo11", aspectRatio: "16/9" },
+            { id: 12, seed: "photo12", aspectRatio: "16/9" },
+            { id: 13, seed: "photo13", aspectRatio: "16/9" },
+            { id: 14, seed: "photo14", aspectRatio: "16/9" },
+            { id: 15, seed: "photo15", aspectRatio: "16/9" },
+            { id: 16, seed: "photo16", aspectRatio: "16/9" },
+            { id: 17, seed: "photo17", aspectRatio: "16/9" },
+            { id: 18, seed: "photo18", aspectRatio: "16/9" },
+            { id: 19, seed: "photo19", aspectRatio: "16/9" },
+            { id: 20, seed: "photo20", aspectRatio: "16/9" },
+            { id: 21, seed: "photo21", aspectRatio: "16/9" },
+            { id: 22, seed: "photo22", aspectRatio: "16/9" },
+            { id: 23, seed: "photo23", aspectRatio: "16/9" },
+            { id: 24, seed: "photo24", aspectRatio: "16/9" },
+        ];
+        
+        // 根据设备类型设置初始加载数量
+        const getInitialPhotosPerPage = () => {
+            // 检测是否为移动设备
+            const isMobile = window.innerWidth < 768;
+            // 移动设备初始加载8张，桌面设备初始加载20张
+            return isMobile ? 8 : 20;
+        };
+        
+        // 每页显示的照片数量
+        let photosPerPage = getInitialPhotosPerPage();
+        // 当前页码
+        let currentPage = 1;
+        // 总页数
+        const totalPages = Math.ceil(photos.length / photosPerPage);
+        // 是否正在加载
+        let isLoading = false;
+        
+        // DOM 元素
+        const photoGrid = document.getElementById('photoGrid');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const photoViewerModal = document.getElementById('photoViewerModal');
+        const currentPhoto = document.getElementById('currentPhoto');
+        const closePhotoViewerBtn = document.getElementById('closePhotoViewerBtn');
+        const prevPhotoBtn = document.getElementById('prevPhotoBtn');
+        const nextPhotoBtn = document.getElementById('nextPhotoBtn');
+        const modalIndicators = document.getElementById('modalIndicators');
+        
+        // 当前查看的照片索引
+        let currentPhotoIndex = 0;
+        
+        // 初始化页面
+        function init() {
+            // 加载第一页照片
+            loadPhotos(currentPage);
+            
+            // 监听滚动事件，实现无限滚动
+            window.addEventListener('scroll', handleScroll);
+            
+            // 绑定模态框控制事件
+            bindModalEvents();
+            
+            // 返回按钮
+            document.getElementById('backBtn').addEventListener('click', () => {
+                window.history.back();
+            });
+            
+            // 滚动时导航栏样式变化
+            window.addEventListener('scroll', () => {
+                const header = document.querySelector('header');
+                if (window.scrollY > 10) {
+                    header.classList.add('shadow-md');
+                    header.classList.remove('shadow-sm');
+                } else {
+                    header.classList.remove('shadow-md');
+                    header.classList.add('shadow-sm');
+                }
+            });
+        }
+        
+        // 绑定模态框控制事件
+        function bindModalEvents() {
+            // 关闭按钮
+            closePhotoViewerBtn.addEventListener('click', closePhotoViewer);
+            
+            // 上一张/下一张按钮
+            prevPhotoBtn.addEventListener('click', showPrevPhoto);
+            nextPhotoBtn.addEventListener('click', showNextPhoto);
+            
+            // 点击模态框外部关闭
+            photoViewerModal.addEventListener('click', (e) => {
+                if (e.target === photoViewerModal) {
+                    closePhotoViewer();
+                }
+            });
+            
+            // 键盘导航
+            document.addEventListener('keydown', (e) => {
+                if (!photoViewerModal.classList.contains('hidden')) {
+                    if (e.key === 'Escape') {
+                        closePhotoViewer();
+                    } else if (e.key === 'ArrowLeft') {
+                        showPrevPhoto();
+                    } else if (e.key === 'ArrowRight') {
+                        showNextPhoto();
+                    }
+                }
+            });
+        }
+        
+        // 加载照片
+        function loadPhotos(page) {
+            if (page > totalPages || isLoading) return;
+            
+            isLoading = true;
+            loadingIndicator.classList.remove('hidden');
+            
+            // 模拟加载延迟
+            setTimeout(() => {
+                const startIndex = (page - 1) * photosPerPage;
+                const endIndex = Math.min(startIndex + photosPerPage, photos.length);
+                const pagePhotos = photos.slice(startIndex, endIndex);
+                
+                pagePhotos.forEach((photo, index) => {
+                    const photoElement = createPhotoElement(photo, startIndex + index);
+                    photoGrid.appendChild(photoElement);
+                    
+                    // 添加动画延迟
+                    setTimeout(() => {
+                        photoElement.classList.add('opacity-100', 'translate-y-0');
+                    }, 50 * index);
+                });
+                
+                isLoading = false;
+                loadingIndicator.classList.add('hidden');
+                
+                // 如果已经加载了所有页面，移除滚动监听
+                if (page >= totalPages) {
+                    window.removeEventListener('scroll', handleScroll);
+                }
+            }, 800);
+        }
+        
+        // 创建照片元素
+        function createPhotoElement(photo, index) {
+            const element = document.createElement('div');
+            // 为长图设置特殊样式
+            const aspectRatioClass = photo.aspectRatio === "3/4" ? "aspect-[3/4]" : "aspect-square";
+            
+            element.className = `bg-white rounded-lg shadow-sm overflow-hidden group opacity-0 translate-y-4 transition-all duration-500 ${photo.aspectRatio === "3/4" ? "lg:col-span-1" : ""}`;
+            element.innerHTML = `
+                <div class="relative ${aspectRatioClass} overflow-hidden">
+                    <img src="https://picsum.photos/seed/${photo.seed}/${photo.aspectRatio === "3/4" ? "600/800" : "400/400"}" alt="" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                </div>
+            `;
+            
+            // 添加点击事件
+            element.addEventListener('click', () => {
+                openPhotoViewer(index);
+            });
+            
+            return element;
+        }
+        
+        // 处理滚动事件
+        function handleScroll() {
+            const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+            
+            // 当滚动到页面底部附近时，加载下一页
+            // 调整触发条件，使其在各种屏幕尺寸下都能正常工作
+            if (scrollTop + clientHeight >= scrollHeight - 500 && !isLoading && currentPage < totalPages) {
+                currentPage++;
+                loadPhotos(currentPage);
+            }
+        }
+        
+        // 打开照片查看器
+        function openPhotoViewer(index) {
+            currentPhotoIndex = index;
+            const photo = photos[index];
+            
+            // 加载高清原图，保持正确的宽高比
+            currentPhoto.src = `https://picsum.photos/seed/${photo.seed}/${photo.aspectRatio === "3/4" ? "1200/1600" : "1920/1080"}`;
+            
+            // 更新指示器
+            updateIndicators();
+            
+            photoViewerModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // 关闭照片查看器
+        function closePhotoViewer() {
+            photoViewerModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // 显示上一张照片
+        function showPrevPhoto() {
+            currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+            updateCurrentPhoto();
+        }
+        
+        // 显示下一张照片
+        function showNextPhoto() {
+            currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+            updateCurrentPhoto();
+        }
+        
+        // 更新当前照片
+        function updateCurrentPhoto() {
+            const photo = photos[currentPhotoIndex];
+            // 加载高清原图，保持正确的宽高比
+            currentPhoto.src = `https://picsum.photos/seed/${photo.seed}/${photo.aspectRatio === "3/4" ? "1200/1600" : "1920/1080"}`;
+            
+            // 更新指示器状态
+            updateIndicators();
+        }
+        
+        // 更新指示器
+        function updateIndicators() {
+            // 清空现有指示器
+            modalIndicators.innerHTML = '';
+            
+            // 创建所有指示器
+            photos.forEach((_, index) => {
+                const indicator = document.createElement('span');
+                indicator.className = `photo-indicator transition-all duration-300 ${index === currentPhotoIndex ? 'bg-primary active' : 'bg-white/30'}`;
+                indicator.addEventListener('click', () => {
+                    currentPhotoIndex = index;
+                    updateCurrentPhoto();
+                });
+                modalIndicators.appendChild(indicator);
+            });
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>    
